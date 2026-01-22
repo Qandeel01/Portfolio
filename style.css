@@ -9,8 +9,7 @@ html {
 } 
 
 body {
-    font-family: -apple-system, BlinkMacSystemFont,
-               "Segoe UI", Roboto, Helvetica, Arial, sans-serif;   
+    font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;   
     background-color: #e6e1c5;
     color: #1f3d2b;
     line-height: 1.6;
@@ -283,3 +282,4 @@ body.dark-body footer {
     color: #1f3d2b;
 
 }
+
