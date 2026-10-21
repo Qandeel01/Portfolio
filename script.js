@@ -1,101 +1,217 @@
-const toggler = document.querySelector(".toggler");
-const navbar = document.getElementById("navbar");
-const body = document.body;
+(() => {
+  const reducedMotion = window.matchMedia(
+    '(prefers-reduced-motion: reduce)'
+  ).matches;
 
-if(localStorage.getItem("dark-mode") === "true") {
-    body.classList.add("dark-body");
-    navbar.classList.add("dark");
-}
+  const menuButton = document.querySelector('.menu-toggle');
+  const nav = document.querySelector('.primary-nav');
+  const navLinks = [...document.querySelectorAll('.primary-nav a')];
 
-if('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
-}
+  // Mobile navigation
+  const closeMenu = () => {
+    menuButton?.setAttribute('aria-expanded', 'false');
+    menuButton?.setAttribute('aria-label', 'Open navigation');
 
-window.addEventListener('load', () => {
-    window.scrollTo(0, 0);
-})
+    nav?.classList.remove('is-open');
+    document.body.classList.remove('menu-open');
+  };
 
-toggler.addEventListener('click', function(e) {
-    body.classList.toggle("dark-body");
-    navbar.classList.toggle("dark");
-    localStorage.setItem("dark-mode", body.classList.contains("dark-body"));
-})
+  menuButton?.addEventListener('click', () => {
+    const opening =
+      menuButton.getAttribute('aria-expanded') !== 'true';
 
-const menuBtn = document.querySelector(".menu-btn");
-const ul = document.querySelector("#navbar ul");
+    menuButton.setAttribute('aria-expanded', String(opening));
 
-menuBtn.addEventListener('click', () => {
-    ul.classList.toggle("active");
-})
+    menuButton.setAttribute(
+      'aria-label',
+      opening ? 'Close navigation' : 'Open navigation'
+    );
 
-ul.addEventListener('click', () => {
-    ul.classList.remove("active");
-})
+    nav?.classList.toggle('is-open', opening);
+    document.body.classList.toggle('menu-open', opening);
+  });
 
-// Section fade aniamtion
-const sections = document.querySelectorAll(".section");
+  navLinks.forEach(link => {
+    link.addEventListener('click', closeMenu);
+  });
 
-function revealSections() {
-    sections.forEach(section => {
-        const sectionTop = section.getBoundingClientRect().top;
-        const screenPos = window.innerHeight / 1.2;
-        if(sectionTop < screenPos) {
-            section.classList.add("visible");
-        }
-    })
-}
-window.addEventListener("scroll", revealSections);
-revealSections();
+  document.addEventListener('keydown', event => {
+    if (event.key === 'Escape') {
+      closeMenu();
+    }
+  });
 
-// SKILL BAR ANIMATION
-const skillsSection = document.getElementById("skills");
-const skillLevels = document.querySelectorAll(".skill-level");
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 760) {
+      closeMenu();
+    }
+  });
 
-//Store original widths
-skillLevels.forEach(level => {
-    const width = level.style.width;
-    level.setAttribute("data-width", width);
-    level.style.width = "0";
-});
+  // Reveal elements when they enter the viewport
+  const revealItems = document.querySelectorAll('.reveal');
 
-function animateSkills() {
-    const sectionPos = skillsSection.getBoundingClientRect().top;
-    const screenPos = window.innerHeight / 1.2;
-    if(sectionPos < screenPos) {
-        skillLevels.forEach(level => {
-            level.style.width = level.getAttribute("data-width");
+  if ('IntersectionObserver' in window && !reducedMotion) {
+    const revealObserver = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+            revealObserver.unobserve(entry.target);
+          }
         });
-        window.removeEventListener("scroll", animateSkills);
-    }
-}
+      },
+      {
+        threshold: 0.12,
+        rootMargin: '0px 0px -30px 0px'
+      }
+    );
 
-window.addEventListener("scroll", animateSkills);
-animateSkills();
+    revealItems.forEach(item => {
+      revealObserver.observe(item);
+    });
+  } else {
+    revealItems.forEach(item => {
+      item.classList.add('is-visible');
+    });
+  }
 
-const form = document.querySelector(".contact-form");
-const formStatus = document.getElementById("form-status");
+  // Pointer-reactive hero graphic
+  const heroArt = document.querySelector('.hero-art');
 
-form.addEventListener("submit", async(e) => {
-    e.preventDefault();
+  if (
+    heroArt &&
+    window.matchMedia('(hover: hover) and (pointer: fine)').matches &&
+    !reducedMotion
+  ) {
+    heroArt.addEventListener('pointermove', event => {
+      const rect = heroArt.getBoundingClientRect();
 
-    const data = new FormData(form);
+      const x = ((event.clientX - rect.left) / rect.width) * 100;
+      const y = ((event.clientY - rect.top) / rect.height) * 100;
 
-    try {
-        const response = await fetch(form.action, {
-            method: "POST",
-            body: data,
-            headers: {
-                "Accept": "application/json"
+      heroArt.style.setProperty('--mx', `${x}%`);
+      heroArt.style.setProperty('--my', `${y}%`);
+
+      heroArt.querySelectorAll('.orbit').forEach((orbit, index) => {
+        const factor = (index + 1) * 0.7;
+
+        orbit.style.translate =
+          `${((x - 50) / 12) * factor}px ` +
+          `${((y - 50) / 12) * factor}px`;
+      });
+    });
+
+    heroArt.addEventListener('pointerleave', () => {
+      heroArt.style.setProperty('--mx', '50%');
+      heroArt.style.setProperty('--my', '50%');
+
+      heroArt.querySelectorAll('.orbit').forEach(orbit => {
+        orbit.style.translate = '0 0';
+      });
+    });
+  }
+
+  // Technology tabs
+  const tabs = [...document.querySelectorAll('.tool-tab')];
+
+  const activateTab = tab => {
+    tabs.forEach(item => {
+      const active = item === tab;
+
+      item.classList.toggle('is-active', active);
+      item.setAttribute('aria-selected', String(active));
+      item.tabIndex = active ? 0 : -1;
+
+      const panel = document.getElementById(
+        item.getAttribute('aria-controls')
+      );
+
+      if (panel) {
+        panel.hidden = !active;
+        panel.classList.toggle('is-active', active);
+      }
+    });
+  };
+
+  tabs.forEach((tab, index) => {
+    tab.addEventListener('click', () => {
+      activateTab(tab);
+    });
+
+    tab.addEventListener('keydown', event => {
+      if (
+        !['ArrowRight', 'ArrowLeft', 'Home', 'End'].includes(event.key)
+      ) {
+        return;
+      }
+
+      event.preventDefault();
+
+      let nextIndex = index;
+
+      if (event.key === 'ArrowRight') {
+        nextIndex = (index + 1) % tabs.length;
+      }
+
+      if (event.key === 'ArrowLeft') {
+        nextIndex = (index - 1 + tabs.length) % tabs.length;
+      }
+
+      if (event.key === 'Home') {
+        nextIndex = 0;
+      }
+
+      if (event.key === 'End') {
+        nextIndex = tabs.length - 1;
+      }
+
+      activateTab(tabs[nextIndex]);
+      tabs[nextIndex].focus();
+    });
+  });
+
+  // Highlight the current section in the navigation
+  const sections = [
+    ...document.querySelectorAll('main section[id]')
+  ];
+
+  if ('IntersectionObserver' in window) {
+    const sectionObserver = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (!entry.isIntersecting) {
+            return;
+          }
+
+          navLinks.forEach(link => {
+            const active =
+              link.getAttribute('href') === `#${entry.target.id}`;
+
+            link.classList.toggle('is-current', active);
+
+            if (active) {
+              link.setAttribute('aria-current', 'location');
+            } else {
+              link.removeAttribute('aria-current');
             }
-        })
+          });
+        });
+      },
+      {
+        rootMargin: '-35% 0px -55% 0px'
+      }
+    );
 
-        if(response.ok) {
-            formStatus.textContent = "Thanks! Your message has been sent";
-            form.reset();
-        } else {
-            formStatus.textContent = "Oops! Something went wrong. Try again.";
-        }
-    } catch (error) {
-        formStatus.textContent = "Network error. Please try later.";
-    }
-})
+    sections.forEach(section => {
+      sectionObserver.observe(section);
+    });
+  }
+
+  // Automatically update the copyright year
+  const year = document.getElementById('year');
+
+  if (year) {
+    year.textContent = new Date().getFullYear();
+  }
+})();
+
